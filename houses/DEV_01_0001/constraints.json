@@ -1,0 +1,11 @@
+{
+  "style": "Development Sandbox",
+  "footprint_x": 6.0,
+  "footprint_y": 8.0,
+  "stories": 1,
+  "roof_type": "gable",
+  "lot_width": 8.0,
+  "lot_depth": 10.0,
+  "wings": 0,
+  "complexity": "simple"
+}

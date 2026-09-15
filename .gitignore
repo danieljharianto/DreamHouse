@@ -35,3 +35,4 @@ server/_cache/
 # Task data: never commit actual house folders, but keep the README
 houses/*
 !houses/README.md
+!houses/DEV_01_0001/
