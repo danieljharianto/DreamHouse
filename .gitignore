@@ -26,6 +26,7 @@ runs/
 # Environment
 .env
 .env.*
+!.env.example
 
 # Local server state (never commit)
 server/_private/

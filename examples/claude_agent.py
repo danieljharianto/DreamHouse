@@ -25,9 +25,17 @@ import re
 from pathlib import Path
 
 import anthropic
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-5")
-MAX_TOKENS = int(os.environ.get("CLAUDE_MAX_TOKENS", "8000"))
+# Generous headroom: adaptive thinking at effort="high" on a 5-image vision
+# task can consume most of a small max_tokens budget before any code is
+# written, truncating the response with stop_reason="max_tokens" and an
+# empty/cut-off code block (see the diagnostic in the dev conversation:
+# 7632 of 8000 output tokens went to thinking, leaving ~0 for code).
+MAX_TOKENS = int(os.environ.get("CLAUDE_MAX_TOKENS", "32000"))
 
 _client: anthropic.Anthropic | None = None
 
@@ -117,13 +125,28 @@ def generate(prompt: str, images: list[str], feedback: list[dict]) -> str:
     content = [_image_block(p) for p in images]
     content.append({"type": "text", "text": prompt + _format_feedback(feedback)})
 
-    response = _get_client().messages.create(
+    # Streaming: a high max_tokens + adaptive thinking request on a 5-image
+    # input can run long enough to hit non-streaming HTTP timeouts.
+    with _get_client().messages.stream(
         model=MODEL,
         max_tokens=MAX_TOKENS,
         system=SYSTEM_PROMPT,
         output_config={"effort": "high"},
         messages=[{"role": "user", "content": content}],
-    )
+    ) as stream:
+        response = stream.get_final_message()
+
+    if response.stop_reason == "max_tokens":
+        raise RuntimeError(
+            f"Claude hit the {MAX_TOKENS}-token cap (thinking + code) before "
+            "finishing. Raise CLAUDE_MAX_TOKENS in .env, or lower the effort "
+            "in examples/claude_agent.py."
+        )
 
     text = "".join(block.text for block in response.content if block.type == "text")
-    return _extract_code(text)
+    code = _extract_code(text)
+    if not code:
+        raise RuntimeError(
+            f"Claude returned no text content (stop_reason={response.stop_reason!r})."
+        )
+    return code

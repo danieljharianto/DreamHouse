@@ -24,8 +24,10 @@ import sys
 from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(REPO_ROOT / ".env")
 SERVER = os.environ.get("DREAMHOUSE_SERVER", "http://127.0.0.1:8000")
 BLENDER = os.environ.get("BLENDER_PATH")
 
